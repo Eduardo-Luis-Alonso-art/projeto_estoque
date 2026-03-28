@@ -1,7 +1,9 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import './assets/styles.css'
+
+localStorage.removeItem('token')
+localStorage.removeItem('usuario')
 
 createApp(App)
   .use(router)

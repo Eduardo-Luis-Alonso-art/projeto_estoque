@@ -7,37 +7,57 @@
       <span class="subtitle">Gerenciamento de produtos</span>
     </div>
 
-    <!-- AÇÕES -->
-    <div class="actions">
-      <button class="btn-primary" @click="abrirForm">
-        + Novo Produto
-      </button>
+    <!-- AÇÕES E BUSCA -->
+    <div class="actions-bar">
+      <div class="search-area">
+        <input 
+          v-model="filtroBusca" 
+          type="text" 
+          placeholder="Buscar..."
+          class="search-input"
+          @input="buscarProdutos"
+        />
+      </div>
+      <div class="action-buttons">
+        <button v-if="isAdmin" class="btn-primary" @click="abrirForm">
+          + Novo Produto
+        </button>
+      </div>
     </div>
 
     <!-- LISTA -->
     <div class="box">
       <h3>Lista de Produtos</h3>
 
+      <!-- Loading -->
+      <div v-if="loading" class="loading-state">
+        Carregando produtos...
+      </div>
+
       <!-- Estado vazio -->
-      <div v-if="produtos.length === 0" class="empty-state">
-        Nenhum produto cadastrado. Clique em "Novo Produto" para começar.
+      <div v-else-if="produtos.length === 0" class="empty-state">
+        Nenhum produto cadastrado.
       </div>
 
       <!-- Cabeçalho da tabela -->
       <div v-else class="item header-item">
         <span>Nome</span>
+        <span>Categoria</span>
         <span>Quantidade</span>
         <span>Preço</span>
-        <span>Ações</span>
+        <span v-if="isAdmin">Ações</span>
       </div>
 
       <!-- Lista de produtos -->
       <div v-for="p in produtos" :key="p.id" class="item">
         <span class="produto-nome">{{ p.nome }}</span>
-        <span class="produto-quantidade">{{ p.quantidade }}</span>
+        <span class="produto-categoria">{{ p.categoria }}</span>
+        <span class="produto-quantidade" :class="{ 'baixo-estoque': p.quantidade <= 5 }">
+          {{ p.quantidade }}
+        </span>
         <span class="produto-preco">R$ {{ formatarPreco(p.preco) }}</span>
 
-        <div class="acoes">
+        <div v-if="isAdmin" class="acoes">
           <button class="edit" @click="editar(p)" title="Editar produto">✏️</button>
           <button class="delete" @click="confirmarRemover(p)" title="Remover produto">🗑️</button>
         </div>
@@ -63,6 +83,18 @@
               required
               autofocus
             />
+          </div>
+
+          <div class="form-group">
+            <label for="categoria">Categoria *</label>
+            <select id="categoria" v-model="form.categoria" required>
+              <option value="">Selecione uma categoria</option>
+              <option value="Eletrônicos">Eletrônicos</option>
+              <option value="Informática">Informática</option>
+              <option value="Escritório">Escritório</option>
+              <option value="Acessórios">Acessórios</option>
+              <option value="Outros">Outros</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -94,8 +126,8 @@
             <button type="button" class="btn-cancel" @click="fecharForm">
               Cancelar
             </button>
-            <button type="submit" class="btn-primary">
-              {{ editando ? "Atualizar" : "Salvar" }}
+            <button type="submit" class="btn-primary" :disabled="salvando">
+              {{ salvando ? "Salvando..." : (editando ? "Atualizar" : "Salvar") }}
             </button>
           </div>
         </form>
@@ -117,15 +149,18 @@
 </template>
 
 <script>
+import { produtoService, authService } from '../services/api'
+
 export default {
-  name: 'DashboardProdutos',
+  name: 'ProdutosView',
   
   data() {
     return {
-      produtos: [
-        { id: 1, nome: "Notebook", quantidade: 10, preco: 3500.00 },
-        { id: 2, nome: "Mouse", quantidade: 5, preco: 80.00 }
-      ],
+      produtos: [],
+      produtosOriginais: [], // Para filtro
+      filtroBusca: '',
+      loading: false,
+      salvando: false,
 
       showForm: false,
       editando: false,
@@ -135,13 +170,51 @@ export default {
       form: {
         id: null,
         nome: "",
+        categoria: "",
         quantidade: 0,
         preco: 0
       }
     }
   },
 
+  computed: {
+    isAdmin() {
+      return authService.isAdmin()
+    }
+  },
+
+  mounted() {
+    this.carregarProdutos()
+  },
+
   methods: {
+    async carregarProdutos() {
+      this.loading = true
+      try {
+        const response = await produtoService.listar()
+        this.produtos = response.data
+        this.produtosOriginais = [...response.data]
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error)
+        alert('Erro ao carregar produtos. Verifique se o servidor está rodando.')
+      } finally {
+        this.loading = false
+      }
+    },
+
+    buscarProdutos() {
+      if (!this.filtroBusca.trim()) {
+        this.produtos = [...this.produtosOriginais]
+        return
+      }
+      
+      const termo = this.filtroBusca.toLowerCase()
+      this.produtos = this.produtosOriginais.filter(p => 
+        p.nome.toLowerCase().includes(termo) || 
+        p.categoria.toLowerCase().includes(termo)
+      )
+    },
+
     abrirForm() {
       this.resetForm()
       this.showForm = true
@@ -152,10 +225,15 @@ export default {
       this.resetForm()
     },
 
-    salvar() {
+    async salvar() {
       // Validações
       if (!this.form.nome || this.form.nome.trim() === '') {
         alert('Por favor, informe o nome do produto')
+        return
+      }
+      
+      if (!this.form.categoria) {
+        alert('Por favor, selecione uma categoria')
         return
       }
       
@@ -169,45 +247,45 @@ export default {
         return
       }
 
-      // Formata o nome (capitaliza primeira letra)
-      const nomeFormatado = this.form.nome.trim().charAt(0).toUpperCase() + 
-                           this.form.nome.trim().slice(1).toLowerCase()
+      this.salvando = true
 
-      if (this.editando) {
-        const index = this.produtos.findIndex(p => p.id === this.form.id)
-        if (index !== -1) {
-          this.produtos[index] = { 
-            ...this.form, 
-            nome: nomeFormatado,
-            preco: parseFloat(this.form.preco)
-          }
-        }
-      } else {
-        // Verifica se já existe produto com mesmo nome
-        const produtoExistente = this.produtos.find(p => 
-          p.nome.toLowerCase() === nomeFormatado.toLowerCase()
-        )
-        
-        if (produtoExistente) {
-          alert('Já existe um produto com este nome!')
-          return
-        }
-        
-        this.produtos.push({
-          ...this.form,
-          id: Date.now(),
+      try {
+        // Formata o nome (capitaliza primeira letra)
+        const nomeFormatado = this.form.nome.trim().charAt(0).toUpperCase() + 
+                             this.form.nome.trim().slice(1).toLowerCase()
+
+        const produtoData = {
           nome: nomeFormatado,
-          preco: parseFloat(this.form.preco)
-        })
-      }
+          categoria: this.form.categoria,
+          quantidade: Number(this.form.quantidade),
+          preco: Number(this.form.preco)
+        }
 
-      this.fecharForm()
+        if (this.editando) {
+          await produtoService.atualizar(this.form.id, produtoData)
+        } else {
+          await produtoService.criar(produtoData)
+        }
+
+        this.fecharForm()
+        await this.carregarProdutos()
+        alert(this.editando ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!')
+        
+      } catch (error) {
+        console.error('Erro ao salvar produto:', error)
+        alert(error.response?.data?.message || 'Erro ao salvar produto. Tente novamente.')
+      } finally {
+        this.salvando = false
+      }
     },
 
     editar(produto) {
       this.form = { 
-        ...produto,
-        preco: parseFloat(produto.preco)
+        id: produto.id,
+        nome: produto.nome,
+        categoria: produto.categoria,
+        quantidade: produto.quantidade,
+        preco: produto.preco
       }
       this.editando = true
       this.showForm = true
@@ -218,15 +296,18 @@ export default {
       this.showConfirmModal = true
     },
 
-    removerConfirmado() {
+    async removerConfirmado() {
       if (this.produtoParaRemover) {
-        this.remover(this.produtoParaRemover.id)
+        try {
+          await produtoService.deletar(this.produtoParaRemover.id)
+          await this.carregarProdutos()
+          alert('Produto removido com sucesso!')
+        } catch (error) {
+          console.error('Erro ao remover produto:', error)
+          alert(error.response?.data?.message || 'Erro ao remover produto. Tente novamente.')
+        }
       }
       this.fecharConfirmModal()
-    },
-
-    remover(id) {
-      this.produtos = this.produtos.filter(p => p.id !== id)
     },
 
     fecharConfirmModal() {
@@ -238,6 +319,7 @@ export default {
       this.form = {
         id: null,
         nome: "",
+        categoria: "",
         quantidade: 0,
         preco: 0
       }
@@ -253,155 +335,158 @@ export default {
 </script>
 
 <style scoped>
+/* CONTAINER */
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px;
+  gap: 24px;
 }
 
 /* HEADER */
 .header h1 {
   font-size: 28px;
-  color: var(--azul-escuro, #2c3e50);
-  margin-bottom: 5px;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .subtitle {
-  color: #666;
+  color: #64748b;
   font-size: 14px;
 }
 
-/* ACTIONS */
-.actions {
+/* ACTION BAR */
+.actions-bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-/* BOTÕES */
+/* SEARCH */
+.search-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  background: #f8fafc;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* BUTTONS */
 .btn-primary {
-  background: var(--azul-padrao, #42b983);
+  background: #3b82f6;
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  transition: 0.2s;
 }
 
 .btn-primary:hover {
-  background: var(--azul-padrao-escuro, #359268);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.btn-cancel {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-cancel:hover {
-  background: #5a6268;
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-danger:hover {
-  background: #c82333;
+  background: #2563eb;
 }
 
 /* BOX */
 .box {
   background: white;
+  border-radius: 16px;
   padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-  border: 1px solid #e9ecef;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
-.box h3 {
-  margin-bottom: 20px;
-  color: #2c3e50;
-  font-size: 18px;
-}
-
-/* LISTA */
+/* TABLE */
 .item {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  padding: 12px 0;
-  border-bottom: 1px solid #eee;
+  grid-template-columns: 1.5fr 1fr 0.8fr 0.8fr 1fr;
+  padding: 14px 10px;
+  border-bottom: 1px solid #f1f5f9;
   align-items: center;
-  transition: background 0.2s ease;
-}
-
-.item:last-child {
-  border-bottom: none;
-}
-
-.header-item {
-  font-weight: bold;
-  color: #495057;
-  border-bottom: 2px solid #e9ecef;
-  padding-bottom: 10px;
-}
-
-/* Estados vazios */
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #6c757d;
   font-size: 14px;
 }
 
-/* AÇÕES */
+.item:hover {
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.header-item {
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 2px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+/* PRODUCT INFO */
+.produto-nome {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.produto-categoria {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  width: fit-content;
+}
+
+.produto-quantidade {
+  font-weight: 500;
+}
+
+.baixo-estoque {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* PRICE */
+.produto-preco {
+  font-weight: 600;
+  color: #16a34a;
+}
+
+/* ACTIONS */
 .acoes {
   display: flex;
   gap: 8px;
 }
 
-.edit, .delete {
-  padding: 6px 10px;
-  border-radius: 6px;
+.acoes button {
+  border: none;
+  background: #f1f5f9;
+  padding: 6px 8px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
+  transition: 0.2s;
 }
 
-.edit {
-  background: #ffc107;
-  color: #212529;
-  border: none;
+.acoes .edit:hover {
+  background: #dbeafe;
 }
 
-.edit:hover {
-  background: #e0a800;
-  transform: scale(1.05);
+.acoes .delete:hover {
+  background: #fee2e2;
 }
 
-.delete {
-  background: #dc3545;
-  color: white;
-  border: none;
-}
-
-.delete:hover {
-  background: #c82333;
-  transform: scale(1.05);
+/* STATES */
+.loading-state,
+.empty-state {
+  text-align: center;
+  padding: 30px;
+  color: #94a3b8;
 }
 
 /* MODAL */
@@ -411,8 +496,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(2px);
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -421,71 +505,55 @@ export default {
 
 .modal-content {
   background: white;
-  padding: 25px;
-  border-radius: 15px;
+  border-radius: 16px;
+  padding: 24px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  animation: modalSlideIn 0.3s ease;
+  max-width: 420px;
+  animation: fadeIn 0.2s ease;
 }
 
 .confirm-modal {
-  max-width: 350px;
+  text-align: center;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: #2c3e50;
+  margin-bottom: 16px;
 }
 
 .modal-close {
-  background: none;
   border: none;
-  font-size: 24px;
+  background: transparent;
+  font-size: 18px;
   cursor: pointer;
-  color: #6c757d;
-  transition: color 0.2s;
 }
 
-.modal-close:hover {
-  color: #dc3545;
-}
-
-/* Formulário */
+/* FORM */
 .form-group {
-  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  color: #495057;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.form-group input {
-  width: 100%;
+.form-group input,
+.form-group select {
   padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
   font-size: 14px;
-  transition: border-color 0.2s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   outline: none;
-  border-color: #42b983;
-  box-shadow: 0 0 0 2px rgba(66, 185, 131, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
+/* MODAL ACTIONS */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -493,11 +561,28 @@ export default {
   margin-top: 20px;
 }
 
-/* Animações */
-@keyframes modalSlideIn {
+.btn-cancel {
+  background: #e2e8f0;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* ANIMAÇÃO */
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -505,29 +590,4 @@ export default {
   }
 }
 
-/* Responsividade */
-@media (max-width: 768px) {
-  .dashboard {
-    padding: 15px;
-  }
-  
-  .item {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    text-align: center;
-  }
-  
-  .header-item {
-    display: none;
-  }
-  
-  .acoes {
-    justify-content: center;
-  }
-  
-  .modal-content {
-    margin: 20px;
-    width: calc(100% - 40px);
-  }
-}
 </style>

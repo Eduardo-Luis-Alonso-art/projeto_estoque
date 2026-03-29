@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
 import Layout from '../components/Layout.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import ProdutosView from '../views/ProdutosView.vue'
+import MovimentacoesView from '../views/MovimentacoesView.vue'  
+import RelatoriosView from '../views/RelatoriosView.vue'
 
 const routes = [
   // Rota de login (pública)
@@ -29,6 +30,16 @@ const routes = [
         path: 'produtos',
         name: 'produtos',
         component: ProdutosView
+      },
+      {
+        path: 'movimentacoes',
+        name: 'movimentacoes',
+        component: MovimentacoesView  
+      },
+      {
+        path: 'relatorios',
+        name: 'relatorios',
+        component: RelatoriosView
       }
     ]
   },

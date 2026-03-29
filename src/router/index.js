@@ -45,7 +45,7 @@ const router = createRouter({
   routes
 })
 
-// 🔐 Guard de autenticação
+// Guard de autenticação
 router.beforeEach((to, from, next) => {
   const isAuthenticated = !!localStorage.getItem('token')
 

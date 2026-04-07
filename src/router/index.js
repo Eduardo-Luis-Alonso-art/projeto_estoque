@@ -7,7 +7,6 @@ import MovimentacoesView from '../views/MovimentacoesView.vue'
 import RelatoriosView from '../views/RelatoriosView.vue'
 
 const routes = [
-  // Rota de login (pública)
   {
     path: '/login',
     name: 'login',
@@ -15,7 +14,6 @@ const routes = [
     meta: { public: true }
   },
 
-  // Rotas protegidas com Layout (sidebar)
   {
     path: '/',
     component: Layout,
@@ -44,7 +42,6 @@ const routes = [
     ]
   },
 
-  // Qualquer rota inválida → login
   {
     path: '/:pathMatch(.*)*',
     redirect: '/login'
@@ -56,7 +53,6 @@ const router = createRouter({
   routes
 })
 
-// Guard de autenticação
 router.beforeEach((to, from, next) => {
   const isAuthenticated = !!localStorage.getItem('token')
 

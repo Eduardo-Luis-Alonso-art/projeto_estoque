@@ -13,7 +13,6 @@
       <div class="card blue">
         <div class="card-top">
           <span>Total de Produtos</span>
-          <span>📦</span>
         </div>
         <h2>{{ totalProdutos }}</h2>
       </div>
@@ -21,7 +20,6 @@
       <div class="card">
         <div class="card-top">
           <span>Total em Estoque</span>
-          <span>📊</span>
         </div>
         <h2>{{ totalEstoque }}</h2>
       </div>
@@ -29,7 +27,6 @@
       <div class="card red">
         <div class="card-top">
           <span>Estoque Baixo</span>
-          <span>⚠️</span>
         </div>
         <h2>{{ estoqueBaixo.length }}</h2>
       </div>
@@ -39,7 +36,6 @@
     <!-- GRID INFERIOR -->
     <div class="grid">
 
-      <!-- ESTOQUE BAIXO -->
       <div class="box">
         <h3>Produtos com estoque baixo (≤ 5)</h3>
 
@@ -310,5 +306,4 @@ export default {
   color: #94a3b8;
   font-size: 14px;
 }
-
 </style>

@@ -26,8 +26,8 @@
         <label>Tipo *</label>
         <select v-model="novaMovimentacao.tipo" required>
             <option value="">Selecione o tipo</option>
-            <option value="entrada">📥 Entrada (adicionar ao estoque)</option>
-            <option value="saida">📤 Saída (remover do estoque)</option>
+            <option value="entrada">Entrada (adicionar ao estoque)</option>
+            <option value="saida">Saída (remover do estoque)</option>
         </select>
         </div>
 
@@ -90,7 +90,7 @@
         <span class="produto-nome">{{ mov.produto_nome || 'Produto não encontrado' }}</span>
         <span>
         <span :class="['badge', mov.tipo]">
-            {{ mov.tipo === 'entrada' ? '📥 ENTRADA' : '📤 SAÍDA' }}
+            {{ mov.tipo === 'entrada' ? 'ENTRADA' : 'SAÍDA' }}
         </span>
         </span>
         <span class="quantidade">{{ mov.quantidade }}</span>

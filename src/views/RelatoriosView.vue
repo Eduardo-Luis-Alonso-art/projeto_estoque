@@ -34,7 +34,7 @@
     <div class="form-group">
         <label>&nbsp;</label>
         <button @click="aplicarFiltros" class="btn-primary">
-        🔍 Aplicar Filtros
+        Aplicar Filtros
         </button>
     </div>
     </div>
@@ -42,7 +42,7 @@
 
 <!-- RESUMO (APENAS PARA ADMIN) -->
 <div v-if="isAdmin" class="resumo-card">
-    <h3>📊 Resumo do Período</h3>
+    <h3>Resumo do Período</h3>
     
     <div class="resumo-grid">
     <div class="resumo-item">
@@ -82,11 +82,11 @@
 <!-- LISTA DE MOVIMENTAÇÕES FILTRADAS -->
 <div class="historico-card">
     <div class="card-header">
-    <h3>📋 Movimentações Filtradas</h3>
+    <h3>Movimentações Filtradas</h3>
     <div class="acoes">
         <span class="total-registros">{{ movimentacoesFiltradas.length }} registros encontrados</span>
         <button v-if="movimentacoesFiltradas.length > 0" @click="exportarCSV" class="btn-export">
-        📥 Exportar CSV
+        Exportar CSV
         </button>
     </div>
     </div>
@@ -117,7 +117,7 @@
         <span class="produto-nome">{{ mov.produto_nome || 'Produto não encontrado' }}</span>
         <span>
         <span :class="['badge', mov.tipo]">
-            {{ mov.tipo === 'entrada' ? '📥 ENTRADA' : '📤 SAÍDA' }}
+            {{ mov.tipo === 'entrada' ? 'ENTRADA' : 'SAÍDA' }}
         </span>
         </span>
         <span class="quantidade">{{ mov.quantidade }}</span>

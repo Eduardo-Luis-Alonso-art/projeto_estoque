@@ -1,10 +1,7 @@
 import axios from 'axios'
 
-// Base URL da API - ajuste conforme a porta do seu back-end
 const API_URL = 'http://localhost:8080/api'
 
-// Flag para usar dados mock (true = dados falsos, false = API real)
-// Enquanto os controllers não estiverem prontos, mantenha true
 const USE_MOCK = true
 
 // ==================== DADOS MOCK ====================
@@ -183,13 +180,10 @@ export const movimentacaoService = {
   }
 }
 
-// ==================== SERVIÇO DE AUTENTICAÇÃO (VERSÃO COMPLETA) ====================
+// ==================== SERVIÇO DE AUTENTICAÇÃO  ====================
 export const authService = {
-  // Login com suporte a mock e API real
   login: async (credenciais) => {
-    // Se estiver usando MOCK
     if (USE_MOCK) {
-      // Credenciais para teste
       if (credenciais.username === 'admin' && credenciais.password === '123') {
         return {
           data: {
@@ -227,24 +221,11 @@ export const authService = {
     }
 
     // ==================== LOGIN REAL COM BACK-END ====================
-    // O back-end espera um objeto com username e password
-    // As senhas são criptografadas com BCrypt no back-end
     try {
       const response = await api.post('/auth/login', {
         username: credenciais.username,
         password: credenciais.password
       })
-      
-      // O back-end deve retornar algo como:
-      // {
-      //   token: "jwt-token-gerado",
-      //   usuario: {
-      //     id: 1,
-      //     nome: "Administrador",
-      //     username: "admin",
-      //     papel: "ADMIN"
-      //   }
-      // }
       
       return response
     } catch (error) {

@@ -1,41 +1,8 @@
 import axios from 'axios'
 
-const API_URL = 'http://localhost:8080/api'
+// CONFIGURAÇÃO AXIOS
+const API_URL = 'http://localhost:8080/api'   
 
-const USE_MOCK = true
-
-// ==================== DADOS MOCK ====================
-const mockProdutos = [
-  { id: 1, nome: 'Notebook Dell', categoria: 'Informática', quantidade: 15, preco: 3500.00 },
-  { id: 2, nome: 'Mouse Logitech', categoria: 'Informática', quantidade: 8, preco: 89.90 },
-  { id: 3, nome: 'Teclado Mecânico', categoria: 'Informática', quantidade: 5, preco: 299.90 },
-  { id: 4, nome: 'Monitor 24"', categoria: 'Eletrônicos', quantidade: 3, preco: 1200.00 },
-  { id: 5, nome: 'Cadeira Gamer', categoria: 'Acessórios', quantidade: 2, preco: 899.90 },
-  { id: 6, nome: 'SSD 1TB', categoria: 'Informática', quantidade: 10, preco: 450.00 }
-]
-
-let mockMovimentacoes = [
-  { id: 1, produto_id: 1, produto_nome: 'Notebook Dell', tipo: 'entrada', quantidade: 5, data: new Date('2026-03-28T10:00:00').toISOString() },
-  { id: 2, produto_id: 2, produto_nome: 'Mouse Logitech', tipo: 'saida', quantidade: 2, data: new Date('2026-03-28T14:30:00').toISOString() },
-  { id: 3, produto_id: 3, produto_nome: 'Teclado Mecânico', tipo: 'entrada', quantidade: 3, data: new Date('2026-03-29T09:15:00').toISOString() },
-  { id: 4, produto_id: 4, produto_nome: 'Monitor 24"', tipo: 'saida', quantidade: 1, data: new Date('2026-03-29T16:45:00').toISOString() }
-]
-
-let nextMovId = 5
-
-// Função para atualizar estoque do produto
-const atualizarEstoqueProduto = (produtoId, tipo, quantidade) => {
-  const produto = mockProdutos.find(p => p.id === produtoId)
-  if (produto) {
-    if (tipo === 'entrada') {
-      produto.quantidade += quantidade
-    } else if (tipo === 'saida') {
-      produto.quantidade = Math.max(0, produto.quantidade - quantidade)
-    }
-  }
-}
-
-// ==================== CONFIGURAÇÃO AXIOS ====================
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -43,7 +10,7 @@ const api = axios.create({
   }
 })
 
-// Interceptor para adicionar token de autenticação
+// adiciona o token JWT automaticamente em todas as requisições
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -52,212 +19,76 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// Interceptor para tratar erro 401 (não autorizado)
+//trata erro 401 
 api.interceptors.response.use(
   response => response,
   error => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('usuario')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     }
     return Promise.reject(error)
   }
 )
 
-// ==================== SERVIÇOS ====================
-
-// Serviço de Produtos
+// SERVIÇO DE PRODUTOS
 export const produtoService = {
-  listar: async () => {
-    if (USE_MOCK) {
-      return { data: [...mockProdutos] }
-    }
-    return api.get('/produtos')
-  },
+  listar: () => api.get('/produtos'),
   
-  buscarPorId: async (id) => {
-    if (USE_MOCK) {
-      const produto = mockProdutos.find(p => p.id === id)
-      return { data: produto }
-    }
-    return api.get(`/produtos/${id}`)
-  },
+  buscarPorId: (id) => api.get(`/produtos/${id}`),
   
-  criar: async (produto) => {
-    if (USE_MOCK) {
-      const novoId = Math.max(...mockProdutos.map(p => p.id), 0) + 1
-      const novoProduto = { ...produto, id: novoId }
-      mockProdutos.push(novoProduto)
-      return { data: novoProduto }
-    }
-    return api.post('/produtos', produto)
-  },
+  criar: (produto) => api.post('/produtos', produto),
   
-  atualizar: async (id, produto) => {
-    if (USE_MOCK) {
-      const index = mockProdutos.findIndex(p => p.id === id)
-      if (index !== -1) {
-        mockProdutos[index] = { ...mockProdutos[index], ...produto, id }
-        return { data: mockProdutos[index] }
-      }
-      throw new Error('Produto não encontrado')
-    }
-    return api.put(`/produtos/${id}`, produto)
-  },
+  atualizar: (id, produto) => api.put(`/produtos/${id}`, produto),
   
-  deletar: async (id) => {
-    if (USE_MOCK) {
-      const index = mockProdutos.findIndex(p => p.id === id)
-      if (index !== -1) {
-        mockProdutos.splice(index, 1)
-        return { data: { success: true } }
-      }
-      throw new Error('Produto não encontrado')
-    }
-    return api.delete(`/produtos/${id}`)
-  }
+  deletar: (id) => api.delete(`/produtos/${id}`)
 }
 
-// Serviço de Movimentações
+// SERVIÇO DE MOVIMENTAÇÕES
 export const movimentacaoService = {
-  listar: async () => {
-    if (USE_MOCK) {
-      const ordenadas = [...mockMovimentacoes].sort((a, b) => 
-        new Date(b.data) - new Date(a.data)
-      )
-      return { data: ordenadas }
-    }
-    return api.get('/movimentacoes')
-  },
+  listar: () => api.get('/movimentacoes'),
   
-  criar: async (movimentacao) => {
-    if (USE_MOCK) {
-      const produto = mockProdutos.find(p => p.id === movimentacao.produto_id)
-      if (!produto) {
-        throw new Error('Produto não encontrado')
-      }
-      
-      if (movimentacao.tipo === 'saida' && produto.quantidade < movimentacao.quantidade) {
-        throw new Error('Estoque insuficiente')
-      }
-      
-      const novaMov = {
-        id: nextMovId++,
-        produto_id: movimentacao.produto_id,
-        produto_nome: produto.nome,
-        tipo: movimentacao.tipo,
-        quantidade: movimentacao.quantidade,
-        data: movimentacao.data || new Date().toISOString()
-      }
-      
-      mockMovimentacoes.push(novaMov)
-      atualizarEstoqueProduto(movimentacao.produto_id, movimentacao.tipo, movimentacao.quantidade)
-      
-      return { data: novaMov }
-    }
-    return api.post('/movimentacoes', movimentacao)
-  },
+  criar: (movimentacao) => api.post('/movimentacoes', movimentacao),
   
-  deletar: async (id) => {
-    if (USE_MOCK) {
-      const index = mockMovimentacoes.findIndex(m => m.id === id)
-      if (index !== -1) {
-        const mov = mockMovimentacoes[index]
-        const tipoInverso = mov.tipo === 'entrada' ? 'saida' : 'entrada'
-        atualizarEstoqueProduto(mov.produto_id, tipoInverso, mov.quantidade)
-        mockMovimentacoes.splice(index, 1)
-        return { data: { success: true } }
-      }
-      throw new Error('Movimentação não encontrada')
-    }
-    return api.delete(`/movimentacoes/${id}`)
-  }
+  deletar: (id) => api.delete(`/movimentacoes/${id}`)
 }
 
-// ==================== SERVIÇO DE AUTENTICAÇÃO  ====================
+//  SERVIÇO DE AUTENTICAÇÃO 
 export const authService = {
-  login: async (credenciais) => {
-    if (USE_MOCK) {
-      if (credenciais.username === 'admin' && credenciais.password === '123') {
-        return {
-          data: {
-            token: 'fake-jwt-token-admin',
-            usuario: {
-              id: 1,
-              nome: 'Administrador',
-              username: 'admin',
-              papel: 'ADMIN'
-            }
-          }
-        }
-      } else if (credenciais.username === 'funcionario' && credenciais.password === '123') {
-        return {
-          data: {
-            token: 'fake-jwt-token-func',
-            usuario: {
-              id: 2,
-              nome: 'Funcionário',
-              username: 'funcionario',
-              papel: 'FUNCIONARIO'
-            }
-          }
-        }
-      }
-      
-      // Credenciais inválidas
-      return Promise.reject({
-        response: {
-          data: {
-            message: 'Usuário ou senha inválidos'
-          }
-        }
-      })
-    }
-
-    // ==================== LOGIN REAL COM BACK-END ====================
-    try {
-      const response = await api.post('/auth/login', {
-        username: credenciais.username,
-        password: credenciais.password
-      })
-      
-      return response
-    } catch (error) {
-      console.error('Erro no login:', error)
-      throw error
-    }
+  login: (credenciais) => {
+    return api.post('/auth/login', {
+      username: credenciais.username,
+      password: credenciais.password
+    })
   },
 
-  // Logout - remove dados do localStorage
   logout: () => {
     localStorage.removeItem('token')
     localStorage.removeItem('usuario')
+    localStorage.removeItem('user')
   },
 
-  // Recupera os dados do usuário logado
+  // Recupera usuário do localStorage 
   getUsuario: () => {
-    const usuario = localStorage.getItem('usuario')
+    const usuario = localStorage.getItem('user') || localStorage.getItem('usuario')
     return usuario ? JSON.parse(usuario) : null
   },
 
-  // Verifica se o usuário é ADMIN
+  // Verifica se é ADMIN 
   isAdmin: () => {
     const usuario = authService.getUsuario()
-    return usuario?.papel === 'ADMIN'
+    return usuario?.role === 'ADMIN' || usuario?.papel === 'ADMIN'
   },
 
-  // Verifica se o usuário está autenticado
   isAuthenticated: () => {
     return !!localStorage.getItem('token')
   },
 
-  // Retorna o token JWT
   getToken: () => {
     return localStorage.getItem('token')
   }

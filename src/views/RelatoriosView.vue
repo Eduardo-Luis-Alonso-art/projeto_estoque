@@ -26,10 +26,6 @@
         <input type="date" v-model="filtros.data_inicio" />
     </div>
 
-    <div class="form-group">
-        <label>Data Fim</label>
-        <input type="date" v-model="filtros.data_fim" />
-    </div>
 
     <div class="form-group">
         <label>&nbsp;</label>
@@ -104,25 +100,26 @@
     <!-- Tabela -->
     <div v-else class="tabela">
     <div class="tabela-header">
-        <span>Data/Hora</span>
-        <span>Produto</span>
-        <span>Tipo</span>
-        <span>Quantidade</span>
-        <span v-if="isAdmin">Valor Unitário</span>
-        <span v-if="isAdmin">Valor Total</span>
+    <span>Data/Hora</span>
+    <span>Produto</span>
+    <span>Tipo</span>
+    <span>Quantidade</span>
+    <span v-if="isAdmin">Valor Unitário</span>
+    <span v-if="isAdmin">Valor Total</span>
     </div>
 
     <div v-for="mov in movimentacoesFiltradas" :key="mov.id" class="tabela-linha">
-        <span>{{ formatarDataCompleta(mov.data) }}</span>
-        <span class="produto-nome">{{ mov.produto_nome || 'Produto não encontrado' }}</span>
-        <span>
+    <span>{{ formatarDataCompleta(mov.data) }}</span>
+    <span class="produto-nome">{{ mov.produto_nome || 'Produto não encontrado' }}</span>
+    <span>
         <span :class="['badge', mov.tipo]">
-            {{ mov.tipo === 'entrada' ? 'ENTRADA' : 'SAÍDA' }}
+        {{ mov.tipo === 'entrada' ? 'ENTRADA' : 'SAÍDA' }}
         </span>
-        </span>
-        <span class="quantidade">{{ mov.quantidade }}</span>
-        <span v-if="isAdmin">{{ formatarMoeda(mov.produto_preco) }}</span>
-        <span v-if="isAdmin">{{ formatarMoeda(mov.quantidade * mov.produto_preco) }}</span>
+    </span>
+    <span class="quantidade">{{ mov.quantidade }}</span>
+
+    <span v-if="isAdmin">{{ formatarMoeda(mov.precoUnitario) }}</span>
+    <span v-if="isAdmin">{{ formatarMoeda(mov.valorTotal) }}</span>
     </div>
     </div>
 </div>
@@ -145,7 +142,6 @@ return {
     filtros: {
     produto_id: '',
     data_inicio: '',
-    data_fim: ''
     },
     
     resumo: {
@@ -214,13 +210,6 @@ aplicarFiltros() {
     if (this.filtros.data_inicio) {
     const dataInicio = new Date(this.filtros.data_inicio)
     filtradas = filtradas.filter(mov => new Date(mov.data) >= dataInicio)
-    }
-    
-    // Filtro por data fim
-    if (this.filtros.data_fim) {
-    const dataFim = new Date(this.filtros.data_fim)
-    dataFim.setHours(23, 59, 59)
-    filtradas = filtradas.filter(mov => new Date(mov.data) <= dataFim)
     }
     
     this.movimentacoesFiltradas = filtradas
